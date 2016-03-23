@@ -22,15 +22,18 @@ public class StagerTest extends TestCase {
      * @throws Exception
      */
     public void testStagerImpl() throws Exception {
-        final Stager<Stages> stager = new StagerImpl<>(Arrays.asList(Stages.values()));
+        final Stager<Stages> stager = new YourStagerImpl<>(Arrays.asList(Stages.values()));
         final StringBuffer sb = new StringBuffer();
 
         //start 4 threads
-        EnumSet.of(Stages.D, Stages.C, Stages.B, Stages.A).parallelStream().map( stage ->  new ThreadWaitingForState<>(stage,stager,sb)).forEach(Thread::start);
+        EnumSet.of(Stages.D, Stages.C, Stages.B, Stages.A).parallelStream()
+                .map( stage ->  new ThreadWaitingForState<>(stage,stager,sb)).forEach(Thread::start);
+
         sb.append("(");
         Assert.assertTrue(stager.advanceToTheNextStage()); //from ZERO to A. that should unblock the threads
         stager.waitUntilStageReached(Stages.E); //Block until other threads complete
         sb.append(")");
+
         Assert.assertEquals(sb.toString(),"(ABCD)"); //here we are checking the order
         Assert.assertFalse(stager.advanceToTheNextStage()); //no next stage available
     }
