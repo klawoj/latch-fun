@@ -2,11 +2,13 @@ import junit.framework.Assert;
 import junit.framework.TestCase;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 
 
 public class StagerTest extends TestCase {
 
-    enum SampleStagesEnum{
+    enum Stages {
+        ZERO,
         A,
         B,
         C,
@@ -15,21 +17,22 @@ public class StagerTest extends TestCase {
     }
 
 
-
+    /**
+     * This test checks just the basics;) feel free to add better ones ;)
+     * @throws Exception
+     */
     public void testStagerImpl() throws Exception {
-        final Stager<SampleStagesEnum> stager = new StagerImpl<>(Arrays.asList(SampleStagesEnum.values()));
+        final Stager<Stages> stager = new StagerImpl<>(Arrays.asList(Stages.values()));
         final StringBuffer sb = new StringBuffer();
-        Thread a = new ThreadWaitingForState<>(SampleStagesEnum.D,stager,sb);
-        Thread b = new ThreadWaitingForState<>(SampleStagesEnum.C,stager,sb);
-        Thread c = new ThreadWaitingForState<>(SampleStagesEnum.B,stager,sb);
-        Thread d = new ThreadWaitingForState<>(SampleStagesEnum.A,stager,sb);
-        a.start();
-        b.start();
-        c.start();
-        d.start();
-        stager.waitUntilStageReached(SampleStagesEnum.E);
-        Assert.assertEquals(sb.toString(),"ABCD");
-        Assert.assertFalse(stager.advanceToTheNextStage());
+
+        //start 4 threads
+        EnumSet.of(Stages.D, Stages.C, Stages.B, Stages.A).parallelStream().map( stage ->  new ThreadWaitingForState<>(stage,stager,sb)).forEach(Thread::start);
+        sb.append("(");
+        Assert.assertTrue(stager.advanceToTheNextStage()); //from ZERO to A. that should unblock the threads
+        stager.waitUntilStageReached(Stages.E); //Block until other threads complete
+        sb.append(")");
+        Assert.assertEquals(sb.toString(),"(ABCD)"); //here we are checking the order
+        Assert.assertFalse(stager.advanceToTheNextStage()); //no next stage available
     }
 
 
